@@ -2,6 +2,185 @@
 	<head>
 	</head>
 	<body>
-		Homework 1 index.html here
+		<!-- #region Task 1 -->
+		<h1> Task 1: Drawing Single-Color Triangles</h1>
+		<p> 
+			For this task, we are given as input 3 pairs of floats: <b>(x0, yo), (x1, y1), (x2, y2)</b> representing the coordinates of the three vertices of a triangle, 
+			along with a Color <b>c</b>, representing the color of said triangle. Our final algorithm performs these steps:
+		</p>
+		<ul>
+			<li> Calculate the min of <b>(x0, x1, x2)</b> as <b>left_x</b></li>
+			<li> Calculate the max of <b>(x0, x1, x2)</b> as <b>right_x</b></li>
+			<li> Calculate the min of <b>(y0, y1, y2)</b> as <b>bottom_y</b></li>
+			<li> Calculate the max of <b>(y0, y1, y2)</b> as <b>top_y</b></li>
+			<li> Iterate through all coordinate combinations from <b>left_x</b> to <b>right_x</b>, and from <b>bottom_y</b> to <b>top_y</b>. For each...</li>
+			<li> Perform the three line test to check if the center point is inside the triangle. If so, color the pixel at this coordinate with <b>c</b>.</li>
+		</ul>
+		<p>
+			The variables <b>left_x</b>, <b>bottom_y</b>, etc. represent the edges of the square which encapsulates the triangle. In other words, they 
+			can be considered the bounds which are guaranteed to cover every point of the triangle. This makes our algorithm an implementation of bounding box.
+		</p>
+		<img src="task1.png" width="500" height="400"> 
+		<!-- endregion -->
+		<!-- #region Task 2 -->
+		<h1> Task 2: Antialiasing by Supersampling </h1>
+		<p> Our algorithm for supersampling is built off our algorithm for simple samples, but with a couple updates.</p>
+		<ul>
+			<li>Calculate the bounds of the triangle as described above.</li>
+			<li>Calculate the width/height of a sampling square given the current <b>sampling_rate</b>.</li>
+			<li> Iterate through all pixels in the bounding box. For each...</li>
+			<li> Iterate through all sub-pixels in the pixel. For each...</li>
+			<li> Perform the three line test to check if the center point is inside the triangle. If so, color the pixel at this coordinate with <b>c</b>. </li>
+		</ul>
+		<img src="task2_1.png" width="250" height="200"> 
+		<img src="task2_2.png" width="250" height="200"> 
+		<img src="task2_3.png" width="250" height="200"> 
+		<p><i>A sharp triangle corner when sampled with rates of 1, 4, and 16 respectively.</i></p>
+		<p> 
+			Just as seen in Task 1, rendering artifacts like jaggies and disjoint components are a setback of using the basic sampling algorithm. 
+			Supersampling seeks to address these artifacts by allowing for pixels to be be filled in "partially". Softer colors are used along the edges 
+			to create a more seamless transition along the boundaries of two solid colors. As we increase the sampling rate, we observe tighter bounds along which 
+			the softer colors are drawn.
+		</p>
+		<!-- #endregion -->
+		<!-- #region Task 3 -->
+		<h1> Task 3: Transforms </h1>
+		<img src="robot.png" width="500" height="400"> 
+		<p>
+			<i>
+				Our robot is giving a lecture on the blackboard to a crowd of students. Perhaps in the not-so-distant future, a robotic 
+				copy of Professor Ren will give lectures on rasterization and transforms in his place.
+			</i>
+		</p>
+		<!-- #endregion -->
+		<!-- #region Task 4-->
+		<h1> Task 4: Barycentric coordinates </h1>
+		<p>
+			Barycentric coordinates are a way of representing a point in a triangle as a set of distances from each of its vertices. 
+			Each coordinate value ranges from 0 to 1, where a 0 indicates that the point lies on an edge formed by a given vertex, 
+			and a 1 indicates that the point lies on the edge facing away from the given vertex. They are incredibly useful for rendering 
+			as they allow us to utilize texture maps, as we will explore in Task 5.
+		</p>
+		<center><img src="gradient.jpg"></center>
+		<p> 
+			<i>A rasterized triangle with vertices colored Red, Blue, and Green respectively. For any point along the triangle, the color 
+			of said point can be described as a proportinate sum of its three barycentric coordinates. </i>
+		</p> 
+		<img src="wheel.png" width="500" height="400">
+		<p>
+			<i>A color wheel, made possible through barycentric coordinates!</i>
+		</p>
+		<!-- #endregion-->
+		<!-- #region Task 5-->
+		<h1> Task 5: "Pixel sampling" for texture mapping </h1>
+		<p> 
+			Pixel sampling allows us to ascribe a <b>texture map</b> to a geometric object (composed of rasterizable triangles). 
+			For this task, we are given the coordinates of a triangle in screen space <b>(x0, y0, x1, y1, x2, y2)</b>, the 
+			coordinates of the same triangle in texture space <b>(u0, v0, u1, v1, u2, v2)</b>, and a texure <b>tex</b>. On a high level, 
+			our goal is to take points inside the triangle in screen space, find their corresponding point on the texture map through 
+			barycentric interpolation, and sample the color at that point to fill in our buffer. Our algorithm performs the calculations 
+			necessary to achieve this goal:
+		</p>
+		<ul>
+			<li> For every point in the rasterized triangle... </li>
+			<li> Calculate the barycentric coordinates of this point as <b>uv</b>. </li>
+			<li> Sample the color in <b>tex</b> at point <b>uv</b> as <b>c</b>. </li>
+			<li> Fill in the buffer spot corresponding to this point as <b>c</b>. </li>
+		</ul>
+		<p>
+			We have to bear in mind that unless both coordinates of <b>uv</b> are integers, there will be no single point in <b>tex</b> that
+			corresponds to <b>uv</b>. More likely, <b>uv</b> will fall somewhere between 4 points in <b>tex</b>. This is the motivation behind 
+			the sampling techniques that we use to retrieve a color from the texture map. When it comes to sampling the color at a given point 
+			in the texture map, there are two options that we choose from: <b>nearest neighbor</b> and <b>bilinear interpolation</b>. 
+		</p>
+		<ul>
+			<li>In <b>nearest neighbor</b> sampling, we determine which defined point in the texture map our uv value is closest to, and return the color at that point.</li>
+			<li> In <b>bilinear interpolation</b> sampling, we use a series of 3 lerps to approximate the color of a point as a proportionate sum of its 4 nearest defined points.</li>
+		</ul>
+		<p> Though more computationally expensive, bilinear interpolation will often produce better results than nearest neighbor, as illustrated in the following example: </p>
+		<img src="nn_1.png" width="375" height="300"> 
+		<img src="nn_16.png" width="375" height="300"> 
+		<p><i> Nearest neighbor sampling with sampling rates of 1 and 16 respectively. Even with a sampling rate of 16, these lines of longitude still appear disjoint. </i></p>
+		<img src="bi_1.png" width="375" height="300"> 
+		<img src="bi_16.png" width="375" height="300"> 
+		<p>
+			<i> 
+				Bilinear interpolation sampling with sampling rates of 1 and 16 respectively. Already we see that interpolating with a sampling rate of 1 defeats nearest 
+				neighbor sampling by drawing longitude lines that are continuous. By increasing the sampling rate, the lines get drawn in a way that better captures their curved 
+				shape.
+			</i>
+		</p>
+		<p> 
+			From this example, we can draw the conclusion that differences between the two methods will beomce most prevalent when sampling textures that feature high frequencies 
+			(color which changes dramatically over a short distance). Bilinear interpolation addresses these high frequency shifts by approximating an intermediate color between 
+			two colors which sharply contrast. In the map example, the high frequency change would be going from the blue ocean to the white longitude line.
+		</p>
+		<!-- #endregion-->
+		<!-- #region Task 6-->
+		<h1> Task 6: "Level sampling" with mipmaps for texture mapping </h1>
+		<p> 
+			<b>Level sampling</b> is a technique which aims to reduce aliasing in the sampling of a single texture, and is motivated by the observation that 
+			objects which appear closer will appear to have a higher resolution than objects that appear further. To perform level sampling, we will store multiple
+			"levels" of a single texture, each level representing a version of the texture that is of a lower resolution than the level before it. We have updated our 
+			algorithm to calculate the level that should be used for each rendered point, where the final color that is sampled is based on which level sampling method 
+			we use. We calculate the level for each pont as follows:
+		</p>
+		<ul>
+			<li>For each point <b>(x, y)</b>...</li>
+			<li>Calculate the coordinate one unit right as <b>(x_1, y)</b></li>
+			<li>Calculate the coordinate one unit up as <b>(x, y_1)</b></li>
+			<li> Calculate the uv coordinates of the three points as <b>uv_00, uv_10, uv_01</b> </li>
+			<li> Calculate the distance from <b>uv_00</b> to <b>uv_10</b> as <b>right_dist</b> </li>
+			<li> Calculate the distance from <b>uv_00</b> to <b>uv_01</b> as <b>up_dist</b> </li>
+			<li> Calculate <b>D</b> as the square root of <b><i>max</i>(up_dist, right_dist)</b> </li>
+			<li> Clamp <b>D</b> so that it is non-negative, and does not exceed our deepest level </li>
+			<li> <b>D</b> now represents the level which should be used for this point </li>
+		</ul>
+
+		<p> 
+			One observation is that <b>D</b> is not guaranteed to be an integer, which is to say that there is no guarantee that the point in question
+			fits perfectly into a level that actually exists. Thus, we refer to one of our various level sampling techniques for addressing this. 
+			We have three options to choose for level sampling techniques: <b>L_zero</b>, <b>L_nearest</b>, and <b>L_linear</b>.
+		</p>
+		<ul>
+			<li> <b>L_zero</b> produces the same result as if there was no leveling at all, since every point is treated as level zero. </li>
+			<li> <b>L_nearest</b> rounds level value to the nearest integer (i.e. 3.6 uses level 4, and 2.1 uses level 2). </li>
+			<li> 
+				<b>L_linear</b> uses a lerp to approximate the color that between two levels as a proportinate sum (i.e. 3.6 uses 60% of level 3, and 
+				40% of level 4).
+			</li>
+		</ul>
+		<p>
+			In terms of speed, <b>L_zero</b> is the fastest as it is equivalent to the case of no level samplin, followed by <b>L_nearest</b> which 
+			requires reading one texture map, with <b>L_linear</b> as the slowest, having to read two texture maps.
+		</p>
+		<p>
+			In terms of memory usage, <b>L_zero</b> is the cheapest as it only requires storing a single texture map. <b>L_nearest</b> and <b>L_linear</b> are 
+			equally expensive as they both require the storing of <i><b>N</b></i> texture maps, where <i><b>N</b></i> is the total number of levels we want.
+		</p>
+		<p>
+			In terms of aliasing prowress, <b>L_zero</b> is the weakest as it assumes the same frequency across all samples. <b>L_nearest</b> is second best, as it 
+			allows for high frequencies to be filtered out to an extent based on level. <b>L_linear</b> will usually provide the best results, as interpolation is 
+			a powerful tool which allows for us to calculate an intermediary color in cases where there are high frequency changes.
+		</p>
+		<img src="zero_near.png" width="375" height="300"> 
+		<p><i> Fruit loops rendered using <b>L_zero</b> and <b>P_nearest</b>. Parts of the image take on a grainy appearance. </i></p>
+		<img src="zero_linear.png" width="375" height="300"> 
+		<p><i> Even when switching to <b>P_linear</b>, the aliasing issue persists. </i></p>
+		<img src="near_near.png" width="375" height="300"> 
+		<p>
+			<i> 
+				Switching over to <b>L_near</b> and <b>P_near</b>, we notice a drastic imporvement with much smoother visuals. This illustrates that our 
+				choice of level sampling technique played a bigger role than out choice of texture sampling technique.
+			</i>
+		</p>
+		<img src="near_linear.png" width="375" height="300">
+		<p>
+			<i> 
+				Finally, by reintroducing <b>P_linear</b>, we create an even smoother result. In conclusion, for certain situations, level sampling techniques can 
+				deliever more major improvements, while texture sampling offers more fine-grain improvements.
+			</i>
+		</p>
+		<!-- #endregion-->
 	</body>
 </html>
