@@ -2,6 +2,157 @@
 	<head>
 	</head>
 	<body>
-		Homework 2 index.html here
+		<!-- #region Overview -->
+		<h1> Overview </h1>
+		<p>
+			In this assignment, we have implemented a comprehensive suite of functions for rendering and modifying 3D meshes
+			in ways that are relevant to the world of 3D graphics. We explore bezier curves, the halfedge data structure, and 
+			how these concepts can be used to create a smooth mesh out of polygons.
+		</p>
+		<!-- endregion -->
+		<!-- #region Part 1-->
+		<h1>Part 1: Bezier Curves with 1D de Casteljau Subdivision</h1>
+		<p> 
+			As a first step, we implemented de Casteljau's algorithm for point interpolation 
+			in the two-dimensional case, or a 1-D array of points. De Casteljau's algorithm is a useful tool 
+			for rendering curves in that it allows a continuous curve to be represented using discrete control points, 
+			which are evaluated to determine the actual positions of points along the curve during runtime. 
+			Given that our function takes as input a number of control points and a position <b>t</b> to be 
+			evaluated, we can perform interpolation as follows:
+		</p>
+		<ul>
+			<li> Given a list of control points <b>p_0</b>, <b>p_1</b>, <b>p_2</b>...</li>
+			<li> While the number of control points is greater than 1: </li>
+			<li> Interpolate the next set of control points by lerping <b>p_0</b> and <b>p_1</b>, <b>p_1</b> and <b>p_2</b>, etc... </li>
+			<li> Use <b>t</b> and <b>1 - t</b> when determining the proportion of each point to use in the lerp </li>
+			<li> Set this new set as our list of control points </li>
+		</ul>
+		<img src="l6.png" width="200" height="150"> 
+		<img src="l5.png" width="200" height="150"> 
+		<img src="l4.png" width="200" height="150"> 
+		<img src="l3.png" width="200" height="150"> 
+		<img src="l2.png" width="200" height="150"> 
+		<img src="l1.png" width="200" height="150">
+		<p><i>Mutliple steps of de Casteljau's algorithm, going from 6 control points down to a single point.</i></p>
+		<img src="curve.png" width="400" height="300"> 
+		<p><i>The actual bezier curve represented by the six control points.</i></p>
+		<img src="leftT.png" width="400" height="300"> 
+		<img src="rightT.png" width="400" height="300"> 
+		<p><i>
+			Examples using points towards the ends of the curve. We note that there is more variance in position from the intermediary control 
+			points when compared to when <b>t = 0.5</b>.
+		</i></p>
+		<!-- endregion -->
+		<!-- #region Part 2-->
+		<h1>Part 2: Bezier Surfaces with Separable 1D de Casteljau</h1>
+		<p>
+			Now we move on implementing bezier surfaces, represented by a 2D matrix of control points. 
+			This allows us to render curvy shapes in 3D, though this presents the question of how to interpolate 
+			points beloging to this bezier surface. We note that a 2D matrix of control points can be thought of 
+			as N 1-D arrays of control points. Should we perform de Casteljau on each of these 1-D arrays, we are again 
+			left with a single set of points that, through de Casteljau, gives us the point in 3D that we are looking for. 
+			Thus, the case of bezier surfaces reduces nicely into the case of bezier curves. Our algorithm works as follows: 
+		</p>
+		<ul>
+			<li> Given a 2D matrix of contol points and coordinates <b>u, v</b> to evaluate... </li>
+			<li> Evaluate each row of the matrix as a bezier curve using the algorithm from Part 1, with <b>t = u</b>, to yield a column of points </li>
+			<li> Evaluate the column of points using the algorithm from Part 1, with <b>t = v</b>, to yield the final point </li>
+		</ul>
+		<img src="teapotbez.png" width="400" height="300">
+		<p><i>A teapot represented as a bezier surface, rendered using our algorithm.</i></p>
+		<!-- endregion -->
+		<!-- #region Part 3-->
+		<h1>Part 3: Area-Weighted Vertex Normals</h1>
+		<p> 
+			Area-Weighted Vertex Normals are an important concept that allows for the rendering of smooth surfaces even when dealing with polygons, 
+			through Phoong shading. In layman's terms, they can be thought of as the <i>"direction pointing out"</i> of each vertex of a mesh. Given 
+			that this is so, it makes intuitive sense that this direction is based upon the <i>"outward facing direction"</i> of the faces neighboring 
+			the vertex. Our algorithm aims to capture this relationship as follows: 
+		</p>
+		<ul>
+			<li> Given a point in a vertex: </li>
+			<li> Iterate throigh all of its neighboring faces </li>
+			<li> For each face, calculate its perpendicular vector by taking the cross product of two of its edges </li>
+			<li> Sum up these vectors, and normalize it. The resulting vector is the area-weighted vertex normal </li>
+		</ul>
+		<img src="woutvn.png" width="400" height="300">
+		<img src="withvn.png" width="400" height="300">
+		<p><i>Comparison of teapot render without and with phoong shading. Note that phoong shading masks the polygonal faces of the 3D mesh.</i></p>
+		<!-- endregion -->
+		<!-- #region Part 4-->
+		<h1>Part 4: Edge Flip</h1>
+		<p>
+			Edge flips are an important operation for triangle meshes to support, as they are one of the steps involed in upscaling a model, 
+			which will be explored in-depth in a later part. This requires a comprehensive visual understanding of the data structure of each parameter of the Triangle. 
+			A good visual understanding of the changes of them follow tidly to acheive the ideal result. To keep things organized, first all of the original 
+			elements are listed out, then edited accoordingly. Next, we update pointers for all elements. 
+		</p>
+		<img src = "flip.png" width="500" height="500">
+		<p><i>Helper Visual Graph before and after the flip of one Triangle.</i></p>
+		<img src="b4flip.png" width="400" height="300">
+		<img src="afterflip.png" width="400" height="300">
+		<p><i>Our teapot represented before and after the flip.</i></p>
+		<p>
+			Debugging Journey: One debug issue encontered in this part concerntrated on the understanding of whether not it is necessary to create
+			new halfedge(s). After debugging, we concluded that there is no need to create any new halfedges. Rather, we simply need to update pointers of the old halfedges.
+		</p>
+		<!-- endregion -->
+		<!-- #region Part 5-->
+		<h1>Part 5: Edge Split</h1>
+		<p>
+			Edge splits are another important operation involved in upscaling. One way to think about edge splitting is that it takes an edge, creates the 
+			edge that would result from a flip, but still preserves the original edge. This operation therefore creates another vertex as well, at the point 
+			where the two edges intersect. To understand the steps necessary for a flip operation, we use another digram, shown below:
+		</p>
+		<img src="split.png" width="500" height="500">
+		<p>
+			With this diagram as our reference, we proceeded to implementing the operation by traversing the two triangles and finding all the mesh components to be 
+			altered. We also created all of the mesh elements. We then methodically went about updating the pointers of every element, matching the relationships outlined 
+			in the diagram.
+		</p>
+		<img src="b4flip.png" width="400" height="300">
+		<img src="aftersplit.png" width="400" height="300">
+		<p><i> Our teapot model, before and after a series of edge splits. </i></p>
+		<img src="b4zoom.png" width="400" height="300">
+		<img src="aftersplitflip.png" width="400" height="300">
+		<p><i> Our teapot model, before and after a series of edge splits and flips. </i></p>
+		<p> Fortunately, this task did not take too long as we had experience doing something similar in Task 4. </p>
+		<!-- endregion -->
+		<!-- #region Part 6-->
+		<h1>Part 6: Loop Subdivision for Mesh Upsampling</h1>
+		<p> 
+			Loop subdivision represents the culmination of our work from the previous two tasks. The ultimate goal of this task is to create a method that can 'upscale' 
+			a mesh by using more triangle to represent the same features. The aim is to provide a smoother texture by upscaling a model until it is in a satisfactory state. 
+			Our algorithm works as described:
+		</p>
+		<ul>
+			<li>Iterate through every current vertex in the mesh. Caculate and store, <b>but not set</b>, its new position. Also mark each vertex as old.</li>
+			<li>Iterate throguh every old edge in the mesh. For each, split it, and mark the newly made vertex as new. Also mark blue edges from splitting.</li>
+			<li>Iterate through every vertex, if the vertex is marked old, update its position using the stored position.</li>
+			<li>Iterate through every edge. If the edge is blue, and connects and old and new vertex, flip it.</li>
+			<li>Mark all mesh elements as old so prevent issues in future upscaling operations.</li>
+		</ul>
+		<img src="cube.png" width="300" height="300">
+		<img src="cubeupscale.png" width="300" height="300">
+		<p><i> 
+			A cube model after multiple rounds of upscaling. As a result of upscaling, the positions of each vertex becomes influenced by one another through averaging, dulling sharp
+			corners. Furthermore, adding more vertices to the mesh makes the contribution of each vertex less pronounced. We also observe that the shape of the cube becomes more asymetric.
+		</i></p>
+		<p>The way to maintain "sharpness" in an object is to preprocess the edges through a series of splits that creates more geometry aroumd the sharp regions of the mesh.</p>
+		<p>We observe that we can preserve symmetry of a model by ensuring that the underlying is mesh edges are symmetrical as well.</p>
+		<img src="cube.png" width="300" height="300">
+		<img src="cubesym.png" width="300" height="300">
+		<img src="cubeupscalebetter.png" width="300" height="300">
+		<p><i>
+			The original cube, the same cube after splitting edges, and the upscaled version of the processed cube. Note the 'x-patterns' on the preprocessed cube, which preserves symmetry 
+			when upscaling towards the final cube.
+		</i></p>
+		<!-- endregion -->
+		<!-- #region Model Something Creative -->
+		<h1>Model Something Creative</h1>
+		<p> We have an intricate and bizarre robot arm model, which takes on an even more eerie appearance after two levels of subdivision. </p>
+		<img src="robot.png" width="500" height="500">
+		<img src="robotupscale.png" width="500" height="500">
+		<!-- endregion -->
 	</body>
 </html>
