@@ -2,6 +2,353 @@
 	<head>
 	</head>
 	<body>
-		Homework 3 index.html here
+		<!-- #region Overview -->
+		<h1>Overview</h1>
+		<p>
+			In this project we have a physcially based rendering pipeline with pathtracing, while also introducing
+			a number of optimization techniques including bounding volume hierarchy and monte carlo sampling. As a 
+			result we are able to render scenes with millions of triangle in a reasonable timeframe and with realistic 
+			results.
+		</p>
+		<!-- endregion -->
+		<!-- #region Part 1-->
+		<h1>Part 1: Ray Generation and Scene Intersection</h1>
+		<p>
+			The most basic piepeline for rendering an image looking into a scene requires two components: the random 
+			generation of rays for sampling the rgb value of each pixel, and determining whether not a ray intersects 
+			with a primitive (triangle or sphere) in a scene. We begin by exploring our implementation of the former: 
+		</p>
+		<div>
+			To sample rays of each pixel, we first need to randomly generate points in each pixel that the rays should 
+			pass through. 
+		</div>
+		<ul>
+			<li>Given coordinates <b>(x, y)</b> representing the bottom left corner of a pixel...</li>
+			<li>
+				For i in range (1...<b>num_samples</b>)
+				<ul>
+					<li>Randomly generate a point <b>(x_i, y_i)</b> where <b>0 &#8804; x_i &#8804; 1</b> and <b>0 &#8804; y_i &#8804; 1</b></li>
+					<li>Intialize a ray for the point <b>(x + x_i, y + y_i)</b>. This point is within the pixel we are sampling</li>
+				</ul>
+			</li>
+		</ul>
+		<div>
+			Now that we have a point on the image to sample, we need to generate the ray that passes through this point, bearing 
+			in mind that image space, camera space, and world space have different coordinate systems.
+		</div>
+		<ul>
+			<li>Compute the horizontal bounds of camera space as <b>-tan(radians(hFov) / 2)</b> and <b>tan(radians(hFov) / 2)</b></li>
+			<li>Compute the vertical bounds of camera space as <b>-tan(radians(vFov) / 2)</b> and <b>tan(radians(vFov) / 2)</b></li>
+			<li>Given a coordinate <b>(x, y)</b> representing the point of the image to sample...</li>
+			<li>Calculate <b>(x_c, y_x)</b> as the same coordinate in camera space</li>
+			<li>Create a vector <b>camera_dir</b> as the ray passing from the camera origin to the viewing plane</li>
+			<li>Multiply <b>c2w</b> and <b>camera_dir</b> to convert the vector to world space, then normalize the vector</li>
+			<li>Intialize a new ray with the given <b>pos</b> of the camera and direction of <b>camera_dir</b></li>
+		</ul>
+		<div>
+			With our algorithm for ray sampling in place, we now move on to the implementation of intersection checks. We will need to
+			implement methods of each primitive type which return boolean values based on whether not a given ray intersects. We start 
+			with triangles, represented by its 3 points <b>p_1, p_2, p_3</b>.
+		</div>
+		<ul>
+			<li>Compute <b>edge_1</b> as <b>p_2 - p_1</b></li>
+			<li>Compute <b>edge_2</b> as <b>p_3 - p_1</b></li>
+			<li>Given a ray <b>r</b></li>
+			<li>Compute <b>s</b> as the line passing between the camera origin and <b>p_1</b></li>
+			<li>Compute <b>s_1</b> as the cross product of the ray and <b>edge_2</b></li>
+			<li>Compute <b>s_2</b> as the cross product of <b>s</b> and and <b>edge_1</b></li>
+			<li>Compute the vector <b>res</b> as <b>1 / dot(s_1, edge_1) * (dot(s_2, edge_2), dot(s_1, s), dot(s_2, r))</b></li>
+			<li>If <b>res[1]&#8805;0</b> and <b>res[2]&#8805;0</b> and <b>res[1]+res[2]&#8804;1</b>, the ray intersects the triangle</li>
+			<li>
+				Lastly, if <b>res[0]&#8805;min_t</b> and <b>res[0]&#8806;max_t</b>, this intersection is valid, and we return <b>true</b>
+			</li>
+		</ul>
+		<div>
+			And as one final step, we also need to update the Intersection <b>isect</b> struct that corresponds to a ray sample. This is how other parts 
+			of the pipeline are able to access the point where the intersection occurs, and is also how we guarantee that our ray treats the object closest to 
+			the origin as its intersection point.
+		</div>
+		<img src="p1/CBspheres.png"> 
+		<img src="p1/CBgems.png">
+		<div><i>A couple of renders using the basic pipeline.</i></div>
+		<!-- endregion -->
+		<!-- #region Part 2-->
+		<h1>Part 2: Bounding Volume Hierarchy</h1>
+		<p>
+			A limitation of native ray sampling is that testing for intersection with every primitive in a scene 
+			can be incredibly expensive, especially for more detailed models. This problem can be mitigated with 
+			<i>bounding volume hierarchies</i>, or <i>bvh</i>. The motivation behind bvh is to divide the primitives 
+			in a scene into "bounding boxes" which themselves are made of smaller bounding boxes. We can then iterate 
+			through the levels of the bounding box in a traversal manner similar to binary search.
+		</p>
+		<p>
+			The first step into constucting our bvh tree is to decide on our splitting point heuristic. We chose to 
+			divide bounding boxes along the hierarchy with the greatest range, and pick the median of the range as the 
+			splitting point.
+		</p>
+		<img src="p2/bunny.png">
+		<img src="p2/dragon.png">
+		<div><i>Some more complicated models, which can still be quickly rendered with bvh</i></div>
+		<p>
+			We attempted rendering the above images using both our complete bvh implementation, and the default naive 
+			implementation in which all primitives belong to the root node. Consistently, we observed that the naive approach 
+			took upwards of 50 seconds to render the images, while the properly divided bvh tree allowed to render images in under 
+			a second. This is consistent with our expectations of having a bvh structure, as rather than exploring the entire scene 
+			each ray can be narrowed down to a small subset of primitives to test again in logarithmic time.
+		</p>
+		<!-- endregion-->
+		<!-- #region Part 3-->
+		<h1>Part 3: Direct Illumination</h1>
+		<p>
+			We now move on to implementing a rendering system that can properly render actual materials. It achieves this goal by "backtracking" 
+			from the camera, tracing sample rays back to the sources of each ray. For calculating the light reflected from a point, we have two 
+			methods to choose from, <i>random sampling in a hemisphere</i> and <i>sampling each light in a scene</i>.
+		</p>
+		<p>
+			<b>estimate_direct_lighting_hemisphere</b>, in short, randomly generates rays shooting out from an intersection in a hemisphere matching 
+			the intersection's normal. If any of these rays hit an emmision object, that emmision is added to the result. In this way, the method aims to 
+			approximate the amount of light that is being reflected.
+		</p>
+		<ul>
+			<li>Compute the point of intersection <b>hit_p</b> and outgoing direction <b>w_out</b></li>
+			<li>for i in range(num_samples)</li>
+			<ul>
+				<li>Randomly generate an outgoing direction <b>wi</b></li>
+				<li>Calculate <b>wi_w</b> as <b>wi</b> in world space</li>
+				<li>Calculate a new ray shooting out towards the point</li>
+				<li>If this ray also intersects with the point, add its emission to <b>L_out</b></li>
+			</ul>
+			<li>Return <b>L_out / num_samples</b></li>
+		</ul>
+		<p>
+			On the other hand, <b>estimate_direct_lighting_importance</b> works by directly polling the light sources in a scene. This approach can help 
+			eliminate random samples that do not provide meaningful information.
+		</p>
+		<ul>
+			<li>for each SceneLight <b>l</b> in a scene</li>
+			<ul>
+				<li>for i in range(num_samples)</li>
+				<li>Compute <b>rad</b> as <b>l->sampleL()</b></li>
+				<li>If the incoming vector is facing outwards</li>
+				<li>Generate a ray with origin of <b>hit_p</b> and direction of <b>wi</b></li>
+				<li>If the ray does not intersect with anything besides the light source, add the light source's emission to <b>L_out</b></li>
+			</ul>
+			<li>Divide <b>L_out</b> by num_samples</li>
+		</ul>
+		<table>
+			<tr>
+				<td><img src="p3/bunny_hem.png"></td>
+				<td><img src="p3/spheres_hem.png"></td>
+			</tr>
+			<tr>
+				<td><img src="p3/bunny_imp.png"></td>
+				<td><img src="p3/spheres_imp.png"></td>
+			</tr>
+		</table>
+		<p><i>
+			The same scenes rendered with hemisphere sampling and direct lighting. We observe that the latter method produces less noise in our renders. 
+			We can attribute this to the nature of hemisphere sampling: given that the scene has a single light source at the top, sampling in a uniform 
+			manner is likely to miss it. Often, we will cast rays in places that do not have an emission, and given the random nature of our algorithm we 
+			are more likely to observe higher radiance between points. This leads to the noise observed in that method.
+		</i></p>
+		<table>
+			<tr>
+				<th>1 sample per pixel</th>
+				<th>4 samples per pixel</th>
+			</tr>
+			<tr>
+				<td><img src="p3/sphere_1.png"></td>
+				<td><img src="p3/sphere_4.png"></td>
+			</tr>
+			<tr>
+				<th>16 samples per pixel</th>
+				<th>64 samples per pixel</th>
+			</tr>
+			<tr>
+				<td><img src="p3/sphere_16.png"></td>
+				<td><img src="p3/sphere_64.png"></td>
+			</tr>
+		</table>
+		<p><i>
+			The same scenes sampled at different sampling rates. We observe in particular that shadows appear much softer as sampling rate goes up, 
+			in that they are more continuous and better reflect the geometry of the object that cast it.
+		</i></p>
+		<!-- endregion -->
+		<!-- #region Part 4-->
+		<h1>Part 4: Global Illumination</h1>
+		<p>
+			In nature, light bounces more than once, and each object reflects light coming from both direct and indirect sources. So far, 
+			we render scenes as if objects only reflect light directly from light sources. After implementing indirect illumination, we will 
+			be able to render even more realistic images of environments.  
+		</p>
+		<p>
+			Our implementation of indirect lighting, which is done in the method <b>at_least_one_bounce_radiance</b>, performs calls to the direct 
+			lighting method from Part 3, and recursively calls itself to generate the additional bounces of light.
+		</p>
+		<ul>
+			<li>Given a ray <b>r</b></li>
+			<li>Compute the light from the current bounce, <b>L_out</b></li>
+			<li>Return immediately if ray depth reaches max ray depth, or if russian roulette randomly decides to terminate on this step</li>
+			<li>Else compute the outgoing vector and pdf from the intersection</li>
+			<li>Generate a new ray <b>r'</b>with the original point of intersection as the origin, and outgoing vector as direction.</li>
+			<li>Set the depth of the ray to be one more than <b>r</b></li>
+			<li>Recursively obtain the radiance from calling this method on <b>r'</b>, and add it to <b>L_out</b></li>
+			<li>Return <b>L_out</b></li>
+		</ul>
+		<img src="p4/bunny_d.png">
+		<img src="p4/bunny_i.png">
+		<p><i>A scene rendered with only direct lighting, and only indirect lighting.</i></p>
+		<table>
+			<tr>
+				<th>m=0</th>
+				<th>m=1</th>
+				<th>m=2</th>
+			</tr>
+			<tr>
+				<td><img src="p4/bunny_0.png"></td>
+				<td><img src="p4/bunny_1.png"></td>
+				<td><img src="p4/bunny_2.png"></td>
+				
+			</tr>
+			<tr>
+				<th>m=3</th>
+				<th>m=4</th>
+				<th>m=5</th>
+			</tr>
+			<tr>
+				<td><img src="p4/bunny_3.png"></td>
+				<td><img src="p4/bunny_4.png"></td>
+				<td><img src="p4/bunny_5.png"></td>
+			</tr>
+		</table>
+		<p><i>
+			The light being reflected from rays sampled at their 0th bounce, up to their fifth bounce. We see that significant 
+			amounts of light are being reflected off the walls and the bunny for m=2 and m=3, showcasing the power of global 
+			illumination for capturing the light that bounces between indirect sources.
+		</i></p>
+		<table>
+			<tr>
+				<th>m=0</th>
+				<th>m=1</th>
+				<th>m=2</th>
+			</tr>
+			<tr>
+				<td><img src="p4/bunny_0_acc.png"></td>
+				<td><img src="p4/bunny_1_acc.png"></td>
+				<td><img src="p4/bunny_2_acc.png"></td>
+				
+			</tr>
+			<tr>
+				<th>m=3</th>
+				<th>m=4</th>
+				<th>m=5</th>
+			</tr>
+			<tr>
+				<td><img src="p4/bunny_3_acc.png"></td>
+				<td><img src="p4/bunny_4_acc.png"></td>
+				<td><img src="p4/bunny_5_acc.png"></td>
+			</tr>
+		</table>
+		<p><i>
+			The images generated from accumulating light from bounces up to m. Using a high sampling rate (1024), we can render impressive 
+			looking images. We also can see how accounting for additional light bounces can produce more realistic renders.
+		</i></p>
+		<table>
+			<tr>
+				<th>m=0</th>
+				<th>m=1</th>
+				<th>m=2</th>
+			</tr>
+			<tr>
+				<td><img src="p4/bunny_0_rr.png"></td>
+				<td><img src="p4/bunny_1_rr.png"></td>
+				<td><img src="p4/bunny_2_rr.png"></td>
+				
+			</tr>
+			<tr>
+				<th>m=3</th>
+				<th>m=4</th>
+				<th>m=100</th>
+			</tr>
+			<tr>
+				<td><img src="p4/bunny_3_rr.png"></td>
+				<td><img src="p4/bunny_4_rr.png"></td>
+				<td><img src="p4/bunny_100_rr.png"></td>
+			</tr>
+		</table>
+		<p><i>
+			The images generated with round robin enabled. Even when expanding up to 100 bounces, we still observe that after about three 
+			bounces, the scene seems to converge on a final result.
+		</i></p>
+		<table>
+			<tr>
+				<th>1 sample/pixel</th>
+				<th>2 samples/pixel</th>
+				<th>4 samples/pixel</th>
+				<th></th>
+			</tr>
+			<tr>
+				<td><img src="p4/bunny_1_samp.png"></td>
+				<td><img src="p4/bunny_2_samp.png"></td>
+				<td><img src="p4/bunny_4_samp.png"></td>
+				<td></td>
+				
+			</tr>
+			<tr>
+				<th>8 samples/pixel</th>
+				<th>16 samples/pixel</th>
+				<th>64 samples/pixel</th>
+				<th>1024 samples/pixel</th>
+			</tr>
+			<tr>
+				<td><img src="p4/bunny_8_samp.png"></td>
+				<td><img src="p4/bunny_16_samp.png"></td>
+				<td><img src="p4/bunny_64_samp.png"></td>
+				<td><img src="p4/bunny_1024_samp.png"></td>
+			</tr>
+		</table>
+		<p><i>
+			Images generated at various sample per pixel rates. As we increase the number of samples, the noisiness of the image decreases. 
+			At 1024 samples per pixel we observe miniscule noise in the image.
+		</i></p>
+		<!-- endregion-->
+		<!-- #region Part 5-->
+		<h1>Part 5: Adaptive Sampling</h1>
+		<p> 
+			Intuitively, we can reason out that parts of the image have less things going on, and therefore may not need as many samples 
+			in order to obtain the "correct" result. Thus we introduce adaptive sampling, another time optimization that allows us to 
+			algorithmically determine if a specific pixel has already converged on its actual color, at which we prematurely terminate the 
+			sampling process. We return to the ray sampling pipeline we implemented in part 1, and make the following adjustments.
+		</p>
+		<ul>
+			<li>Initialize two numbers, <b>s1</b> and <b>s2</b> as zero</li>
+			<li>For <b>i</b> in range(<i>num_samples</i>)</li>
+			<ul>
+				<li>If we've fully tested a sample batch</li>
+				<li>Compute <b>mean</b> as <b>s1 / i</b></li>
+				<li>Computer <b>variance</b> as <b>(s2 - (s1**2)/i)/(i - 1)</b></li>
+				<li>If <b>1.96*sqrt(variance/double(samples)) &#8804; maxTolerance * mean</b>, terminate</li>
+				<li>Let <b>illum</b> be the illumination of the current sample</li>
+				<li><b>s1 += illum</b></li>
+				<li><b>s2 += illum * illum</b></li>
+			</ul>
+		</ul>
+		<table>
+			<tr>
+				<td><img src="p5/bunny_ad.png"></td>
+				<td><img src="p5/spheres_ad.png"></td>
+			</tr>
+			<tr>
+				<td><img src="p5/bunny_heat.png"></td>
+				<td><img src="p5/spheres_heat.png"></td>
+			</tr>
+		</table>
+		<p>
+			<i>
+				Two renders using a very high sampling rate (2048). Thanks to adaptive sampling, we can save time on expensive 
+				renders by avoiding oversampling in areas that converge quickly (marked in blue).
+			</i>
+		</p>
+		<!-- endregion -->
 	</body>
 </html>
