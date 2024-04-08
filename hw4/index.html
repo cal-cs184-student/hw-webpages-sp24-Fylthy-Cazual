@@ -2,6 +2,187 @@
 	<head>
 	</head>
 	<body>
-		Homework 4 index.html here
+		<!-- #region Overview -->
+		<h1>Overview</h1>
+		<p>
+			In this project we explore the techniques for simulating cloth in 3D, as well as 
+			different ways of rendering objects using shaders.
+		</p>
+		<!-- endregion -->
+		<!-- #region Part 1-->
+		<h1>Part 1: Masses and Springs</h1>
+		<table>
+			<tr>
+				<td><img src="all_constaints.png" width="300"></td>
+				<td><img src="no_shear.png"  width="300"></td>
+				<td><img src="only_shear.png"  width="300"></td>
+			</tr>
+			<tr>
+				<td>All constraints</td>
+				<td>Shearing constraints hidden</td>
+				<td>Structural and bending constraints hidden</td>
+			</tr>
+		</table>
+		<!-- endregion -->
+		<!-- #region Part 2-->
+		<h1>Part 2: Simulation via numerical integration</h1>
+		<p>
+			From experimenting with various spring constant values for <i>ks</i>, we 
+			see that it affects the "stiffness" of the cloth. We observe greater creasing 
+			and draping patterns when the value of <i>ks</i> is low, while they are much less 
+			prevalent when <i>ks</i> is high, which is to say that the cloth tends to maintain 
+			its original shape.
+		</p>
+		<table>
+			<tr>
+				<td><img src="low_ks.png" width="300"></td>
+				<td><img src="high_ks.png" width="300"></td>
+			</tr>
+			<tr>
+				<td>Low <i>ks</i></td>
+				<td>High <i>ks</i></td>
+			</tr>
+		</table>
+		<p>
+			On the other hand, density has the inverse affect. Low values for density lead to a stiffer 
+			cloth, and high density values leads to more dynamic creasing. 
+		</p>
+		<table>
+			<tr>
+				<td><img src="low_density.png" width="300"></td>
+				<td><img src="high_density.png" width="300"></td>
+			</tr>
+			<tr>
+				<td>Low density</td>
+				<td>High density</td>
+			</tr>
+		</table>
+		<p>
+			Damping seems to drive how fast the cloth converges into its resting state when presented with 
+			a change. Lower damping values lead to faster convergence while higher damping values lead to slower 
+			convergence. One tradeoff of speeding up the convergence speed is that the transition appears less "fluid" 
+			with more noticeable jittering effects.
+		</p>
+		<img src="pin_cloth.png" width="300">
+		<!-- endregion -->
+		<!-- #region Part 3-->
+		<h1>Part 3: Handling collisions with other objects</h1>
+		<table>
+			<tr>
+				<td><img src="500ks.png" width="300"></td>
+				<td><img src="5000ks.png" width="300"></td>
+				<td><img src="50000ks.png" width="300"></td>
+			</tr>
+			<tr>
+				<td><i>ks</i> = 500</td>
+				<td><i>ks</i> = 5000</td>
+				<td><i>ks</i> = 50000</td>
+			</tr>
+		</table>
+		<p>
+			As <i>ks</i> increases, the shape of the cloth is less affected by the shape of the sphere. 
+			This matches the observations made in the previous part, where we find that increasing ks 
+			makes the cloth behave as if it was "stiffer". When <i>ks</i> = 500, the cloth wraps itself 
+			tightly around the sphere. At <i>ks</i> = 50000, the cloth rests awkwardly atop the sphere with 
+			its corners protruding outwards.
+		</p>
+		<img src="plane.png" width="300">
+		<!-- endregion -->
+		<!-- #region Part 4-->
+		<h1>Part 4: Handling self collisions</h1>
+		<table>
+			<tr>
+				<td><img src="cloth_start.png" width="300"></td>
+				<td><img src="cloth_init.png" width="300"></td>
+				<td><img src="cloth_crumple.png" width="300"></td>
+				<td><img src="cloth_rest.png" width="300"></td>
+			</tr>
+			<tr>
+				<td>Cloth initial state</td>
+				<td>Early collisions create ripple patterns in the cloth</td>
+				<td>As collisions pile up, cloth forms layers</td>
+				<td>Cloth in rest</td>
+			</tr>
+		</table>
+		<table>
+			<tr>
+				<td><img src="low_ks_sc.png" width="300"></td>
+				<td><img src="high_ks_sc.png" width="300"></td>
+			</tr>
+			<tr>
+				<td>low <i>ks</i></td>
+				<td>high <i>ks</i></td>
+			</tr>
+		</table>
+		<p>
+			Lower <i>ks</i> values results in fewer but larger ripples, whereas high 
+			<i>ks</i> values leads to smaller but higher frquency ripples.
+		</p>
+		<table>
+			<tr>
+				<td><img src="low_density_sc.png" width="300"></td>
+				<td><img src="high_density_sc.png" width="300"></td>
+			</tr>
+			<tr>
+				<td>low density</td>
+				<td>high density</td>
+			</tr>
+		</table>
+		<p>
+			Lower density values lead to larger ripples, whereas higher density values leads to 
+			smaller but more frequent ripples. Compared to <i>ks</i>, density changes have less of 
+			an effect on the more granular level ossicilations within the cloth, as we the "bump" 
+			patterns in the above images are not present here.
+		</p>
+		<!-- endregion -->
+		<!-- #region Part 5-->
+		<h1>Part 5: Shaders</h1>
+		<p>
+			In this part of the project we implement vertex and fragment shaders to create a variety 
+			of textures on our objects. Vertex shaders allow for "bump" mapping, in which textures with 
+			roughness or ridges can be simulated with slight vertex displacements. Fragment shaders work by 
+			using an algorithm to calculate the color that each face of a cloth should have.
+		</p>
+		<p>
+			Blinn-Phong shaders allow for objects to take on a metallic luster effect. This means applying 
+			a fixed additional amount of luminance on top of the regular diffuse luminance, as well as another 
+			layer of spectal luminance that is dependent on the observer's viewing angle.
+		</p>
+		<table>
+			<tr>
+				<td><img src="ambient.png" width="300"></td>
+				<td><img src="diffuse.png" width="300"></td>
+				<td><img src="spectral.png" width="300"></td>
+				<td><img src="phong.png" width="300"></td>
+			</tr>
+			<tr>
+				<td>ambient</td>
+				<td>diffuse</td>
+				<td>spectral</td>
+				<td>all combined</td>
+			</tr>
+		</table>
+		<img src="bidome.png" width="300">
+		<table>
+			<tr>
+				<td><img src="bump.png" width="300"></td>
+				<td><img src="displace.png" width="300"></td>
+			</tr>
+			<tr>
+				<td>bump mapping</td>
+				<td>displacement mapping</td>
+			</tr>
+		</table>
+		<p>
+			Displacement mapping creates a more realistic representation of the texture's more 
+			minute features by modifying the geomtery of the cloth itself. However, this consequently 
+			also leads to different spring interactions and collision interactions with objects. 
+			In contrast, bump mapping maintains the same shape as other types of rendering. Increasing 
+			mesh coarseness leads to less "sliding" when collisions occur. This leads to faster convergence 
+			as well as a lower likelihood of objects "sliding" off one another.
+		</p>
+		<img src="mirror.png" width="300">
+		<!-- endregion -->
 	</body>
+
 </html>
